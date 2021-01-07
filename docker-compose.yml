@@ -1,0 +1,39 @@
+version: "3"
+services:
+    # a simple service to add postrouting rule for this network
+    add_masquerade:
+        build:
+            context: .
+            # use the host network to build
+            # because the default outbound IP of my host is under strict upstream firewall restriction
+            network: host
+            dockerfile: Dockerfile
+        image: add_masquerade
+        working_dir: /root
+        tty: true
+        stdin_open: true
+        command: ./add_masquerade.sh
+        environment:
+            - "INTERFACE=${BRIDGE_NAME}"
+            - "OUTBOUND_IP=${OUTBOUND_IP}"
+        cap_add:
+            - NET_ADMIN
+        network_mode: "host"
+        volumes:
+            - "./add_masquerade.sh:/root/add_masquerade.sh"
+    dummy:
+        image: alpine:3.12.3
+        command: "echo the reason I exist is to trigger bridge creation!"
+        networks:
+            - net
+
+networks:
+    net:
+        driver: bridge
+        ipam:
+            driver: default
+            config:
+                - subnet: 10.99.65.0/24
+        driver_opts:
+            com.docker.network.bridge.name: "${BRIDGE_NAME}"
+            com.docker.network.bridge.enable_ip_masquerade: "false"
